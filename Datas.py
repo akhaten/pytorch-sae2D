@@ -10,6 +10,7 @@ import pathlib
 
 import PIL.Image
 
+import Utils
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -34,19 +35,32 @@ class ImageDataset(torch.utils.data.Dataset):
             filename = img_input_path.stem #filename without extension file
             
             # Load imgs
-            img_input = torch.tensor(numpy.load(img_input_path))
+            img_npy = numpy.array(numpy.load(img_input_path))
+
+            # Make proba map
+            proba_map = Utils.create_probability_map(
+                img = img_npy,
+                k = nb_classes
+            )
+
+            proba_map = torch.tensor(proba_map)
+            proba_map = proba_map.to(device, dtype=torch.float)
+            proba_map = proba_map.unsqueeze(0)
+            
+
+            img_input = torch.tensor(img_npy)
             
             # Move on datas device
             img_input = img_input.to(device, dtype=torch.float)
             img_input = img_input.unsqueeze(0)
             img_input = img_input.unsqueeze(0)
             
-            self.items.append((img_input, nb_classes, filename))
+            self.items.append((img_input, proba_map, filename))
 
     def __len__(self) -> int:
         return len(self.items)
 
-    def __getitem__(self, index) -> tuple[torch.Tensor, str]:
+    def __getitem__(self, index) -> tuple[torch.Tensor, torch.Tensor, str]:
         return self.items[index]
     
 

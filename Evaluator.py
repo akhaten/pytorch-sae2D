@@ -37,35 +37,20 @@ def evaluate_dataloader(
 
         for batch in dataloader:
 
-            inputs, classes, filename = batch
-
+            inputs, proba_map, filename = batch
+      
             # Move batch on model_device
-            inputs = inputs.to(model_device, non_blocking=True)
+            # inputs = inputs.to(model_device, non_blocking=True)
 
             for i in range(0, inputs.shape[0]):
                 # to model device
                 x = inputs[i].to(model_device, non_blocking=True)
-                k = classes[i]
+                x_template = proba_map[i].to(model_device, non_blocking=True)
                 # x : torch.Size([1, nb_channels, nb_rows, nb_cols])
-                # proba_map = Utils.create_probability_map(
-                #     img = x,
-                #     k = k
-                # )
-                img = x[0, 0].cpu().detach().numpy()
-                proba_map = Utils.create_probability_map(
-                    img = img,
-                    k = k.item()
-                )
-                proba_map = torch.tensor(
-                    proba_map, 
-                    device=model_device, 
-                    dtype=x.dtype,
-                    requires_grad = False
-                )
-                proba_map = proba_map.unsqueeze(0)
+                # x_template : torch.Size([1, nb_classes, nb_rows, nb_cols])
                 recon = model(
                     x=x, 
-                    prior=proba_map, 
+                    prior=x_template, 
                     return_logits = False
                 )
                 # logits : torch.Size([1, nb_classes, nb_rows, nb_cols])
@@ -79,7 +64,11 @@ def evaluate_dataloader(
                     imgs_output_path / (filename[i]+'.npy'), 
                     recon[0, 0].detach().numpy()
                 )
+                # Batch return on datas device
+                inputs[i] = x.to(datas_device, non_blocking=True)
+                proba_map[i] = x_template.to(datas_device, non_blocking=True)
 
-            # Batch return on datas device
-            inputs = inputs.to(datas_device, non_blocking=True)
+
+            
+            # inputs = inputs.to(datas_device, non_blocking=True)
 

@@ -26,7 +26,7 @@ def create_train_step(
     # Define any training logic for iteration update
     def train_step(engine: ignite.engine.Engine, batch):
         
-        inputs, classes = batch[0], batch[1]
+        inputs, proba_map = batch[0], batch[1]
         
         # Move batch on model_device    
         # inputs = inputs.to(model_device, non_blocking=True)
@@ -44,43 +44,23 @@ def create_train_step(
             print('Epoch: {}; Iter : [{}/{}]'.format(engine.state.epoch, i, size_of_batch))
             # to model device
             ## x : torch.Size([1, nb_channels, nb_rows, nb_cols])
+            ## x_template : torch.Size([1, nb_classes, nb_rows, nb_cols])
             x = inputs[i].to(model_device, non_blocking=True)
-            ## k is tensor with only one value
-            k = classes[i]
-            # img : shape : (nb_rows, nb_line)
-            img = x[0, 0].cpu().detach().numpy()
+            x_template = proba_map[i].to(model_device, non_blocking=True)
 
-            print("BEGIN proba map")
-            proba_map = Utils.create_probability_map(
-                img = img,
-                k = k.item()
-            )
-            proba_map = torch.tensor(
-                proba_map, 
-                device=model_device, 
-                dtype=x.dtype,
-                requires_grad = False
-            )
-            proba_map = proba_map.unsqueeze(0)
-            print("END proba map")
-            print("BEGIN model")
-            recon, logits = model(x=x, prior=proba_map, return_logits = True)
-            print("END model")
+            recon, logits = model(x=x, prior=x_template, return_logits = True)
             # logits : torch.Size([1, nb_classes, nb_rows, nb_cols])
             # recon : torch.Size([1, nb_channels, nb_rows, nb_cols])
-            print("BEGIN criterion")
             loss: torch.Tensor = criterion(x=x, proba_map=proba_map, logits=logits, recon=recon)
-            print("END criterion")
             batch_loss += loss.item()
-            print("BEGIN backward")
             loss.backward()
-            print("END backward")
-
+      
             # acc_recon.append(recon.to(datas_device))
             # acc_logits.append(logits.to(datas_device))
 
             # return on datas device
             inputs[i] = x.to(datas_device, non_blocking=True)
+            proba_map[i] = x_template.to(datas_device, non_blocking=True)
 
         batch_loss /= size_of_batch
         optimizer.step()
