@@ -1,11 +1,11 @@
 dataset:
-  device: cuda:1
+  device: cuda:0
   params:
     nb_classes: 2
     batch_size: 16
     shuffle: true
     train_size: 0.75
-  path: /users/minds/jkhafif/Documents/Datasets/UnfoldingResults
+  path: ./dataset
 
 model:
   device: cuda:0
