@@ -86,7 +86,7 @@ def create_train_step(
             # 'inputs' : inputs,
             # 'logits' : acc_logits,
             # 'recons' : acc_recon,
-            'loss' : batch_loss
+            'batch_loss' : batch_loss
         }
 
         
