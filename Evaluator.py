@@ -48,7 +48,7 @@ def evaluate_dataloader(
                 x_template = proba_map[i].to(model_device, non_blocking=True)
                 # x : torch.Size([1, nb_channels, nb_rows, nb_cols])
                 # x_template : torch.Size([1, nb_classes, nb_rows, nb_cols])
-                recon = model(
+                recon, _ = model(
                     x=x, 
                     prior=x_template, 
                     return_logits = False

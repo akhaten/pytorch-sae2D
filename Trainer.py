@@ -95,8 +95,8 @@ def save_loss_history(engine: ignite.engine.Engine, loss_history: list, loss_pat
 def clean_saeloss(engine: ignite.engine.Engine, loss: wrapper2D.defineme.SAELoss2D):
     loss.clear_running_var()
 
-def print_logs(engine: ignite.engine.Engine):
-    strp = 'Epoch [{}/{}] : Loss {:.6f}'
+def print_epoch_logs(engine: ignite.engine.Engine):
+    strp = 'Epoch [ {} / {} ] ; Batch [ {} / {} ] Loss {:.6f}'
     print(
         strp.format(
             engine.state.epoch,
@@ -104,6 +104,17 @@ def print_logs(engine: ignite.engine.Engine):
             engine.state.output['loss']
         )
     )
+
+# def print_iteration_logs(engine: ignite.engine.Engine):
+#     strp = 'Epoch [{}/{}] : Loss {:.6f}'
+#     print(
+#         strp.format(
+#             engine.state.epoch,
+#             engine.state.max_epochs,
+#             engine.state.output['loss']
+#         )
+#     )
+
 
 def save_model(
     engine: ignite.engine.Engine, 
@@ -113,3 +124,4 @@ def save_model(
     no_epoch = engine.state.epoch
     torch.save(model.state_dict(), path / 'model_epoch_{}.pt'.format(no_epoch))
 
+ignite.engine.create_supervised_trainer

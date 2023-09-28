@@ -23,8 +23,8 @@ def get_lookup(prior, neighboor_size):
     enumerate_chs = torch.arange(labels).view(1, -1, 1, 1).byte()
     enumerate_chs = enumerate_chs.to(prior.device)
     
-    print('prior device:', prior.device)
-    print('enumerate_chs device:', enumerate_chs.device)
+    # print('prior device:', prior.device)
+    # print('enumerate_chs device:', enumerate_chs.device)
     enumerated_prior = enumerate_chs*prior
     enumerated_prior = torch.sum(enumerated_prior,1,True) 
     enumerated_prior = wrapper2D.training_tools.padder(
