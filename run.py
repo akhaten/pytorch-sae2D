@@ -108,7 +108,6 @@ if __name__ == '__main__':
     print("MAKE DATASET / DATALOADER")
     dataset_full = Datas.ImageDataset(
         dataset_path,
-        config['dataset']['params']['nb_classes'],
         datas_device
     )
     dataset_train, dataset_validation = Datas.split_dataset(dataset_full, train_size=train_size)

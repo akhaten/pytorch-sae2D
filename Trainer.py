@@ -51,7 +51,7 @@ def create_train_step(
             recon, logits = model(x=x, prior=x_template, return_logits = True)
             # logits : torch.Size([1, nb_classes, nb_rows, nb_cols])
             # recon : torch.Size([1, nb_channels, nb_rows, nb_cols])
-            loss: torch.Tensor = criterion(x=x, proba_map=proba_map, logits=logits, recon=recon)
+            loss: torch.Tensor = criterion(x=x, proba_map=x_template, logits=logits, recon=recon)
             batch_loss += loss.item()
             loss.backward()
       

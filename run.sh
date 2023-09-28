@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH --job-name=Seg
-#SBATCH --output=trains/train_default_params/output.out
-#SBATCH --error=trains/train_default_params/error.err
+#SBATCH --output=trains/train_osirim/output.out
+#SBATCH --error=trains/train_osirim/error.err
 
 #SBATCH --mail-type=END
 #SBATCH --mail-user=Jessy.Khafif@irit.fr
@@ -19,10 +19,10 @@
 
 
 container=/projets/minds/jkhafif/containers/pytorch-with-ignite-v1.sif
-directory=/users/minds/jkhafif/Documents/seg-parts
+directory=/users/minds/jkhafif/Documents/pytorch-sae2D
 python=python3
 # script=run.py
 script=run.py
 
 
-srun singularity exec ${container} ${python} ${script} ${directory}/trains/train_default_params
+srun singularity exec ${container} ${python} ${script} ${directory}/trains/train_osirim

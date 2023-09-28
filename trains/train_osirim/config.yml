@@ -1,0 +1,37 @@
+dataset:
+  device: cuda:0
+  params:
+    nb_classes: 2
+    batch_size: 16
+    shuffle: true
+    train_size: 0.75
+  path: /users/minds/jkhafif/Documents/Datasets/UnfoldingResults
+
+model:
+  device: cuda:0
+  params:
+    latent_dim: 2 
+    tau: 0.6667 # 2/3
+
+output:
+  loss: loss.npy
+  # metrics:
+  #   train: train.pkl
+  #   validation: validation.pkl
+  models_save:
+    every: 1
+    path: models_saving
+  imgs_save:
+    every: 1
+    path: imgs_saving
+
+train:
+  learning_rate: 0.001 # 1e-3
+  loss:
+    sigma: 0 # 0 or 2
+    alpha: 1.0
+    beta: 0.01
+    k: 3
+  nb_epochs: 1
+  optimizer: torch.optim.Adam
+
