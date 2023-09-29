@@ -9,6 +9,8 @@ import ignite.engine
 import numpy
 import typing
 
+import wrapper2D.defineme
+
 class CustomEngine(ignite.engine.Engine):
 
     def __init__(self, 
@@ -96,7 +98,8 @@ def create_train_step(
 
 
 
-
+def clean_saeloss(engine: ignite.engine.Engine, loss: wrapper2D.defineme.SAELoss2D):
+    loss.clear_running_var()
 
 
 def update_epoch_loss(engine: CustomEngine) -> None:

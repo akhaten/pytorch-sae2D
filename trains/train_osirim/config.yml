@@ -22,7 +22,7 @@ output:
     every: 1
     path: models_saving
   imgs_save:
-    every: 1
+    every: 10
     path: imgs_saving
 
 train:
@@ -32,6 +32,6 @@ train:
     alpha: 1.0
     beta: 0.01
     k: 3
-  nb_epochs: 1
+  nb_epochs: 40
   optimizer: torch.optim.Adam
 

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('./sae')
 
 #from Unfolding2D import \
 #    ModelV1 as Model, \
@@ -9,7 +9,7 @@ sys.path.append('..')
 
 import CustomTrainer
 import Evaluator
-import wrapper2D.defineme
+# import wrapper2D.defineme
 import Datas
 
 import torch.optim
@@ -28,6 +28,9 @@ import pandas
 import numpy
 import yaml
 import sys
+
+import wrapper2D.models
+import wrapper2D.defineme
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -160,7 +163,7 @@ if __name__ == '__main__':
 
     # model.to(device=...)
 
-    model = model.to(model_device)
+    #model = model.to(model_device)
     train_step = CustomTrainer.create_train_step(
         model, model_device, datas_device, optimizer, criterion
     )
@@ -179,11 +182,18 @@ if __name__ == '__main__':
         CustomTrainer.save_epoch_loss,
         loss_path
     )
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED,
+        # Callback
+        CustomTrainer.clean_saeloss,
+        # Parameters of callback
+        criterion, 
+    )
 
 
     # Make evaluator
-    evaluate_function = Evaluator.create_evaluate_function_with_variable_size_image(model, model_device, datas_device)
-    evaluator = ignite.engine.Engine(evaluate_function)
+    # evaluate_function = Evaluator.create_evaluate_function_with_variable_size_image(model, model_device, datas_device)
+    # evaluator = ignite.engine.Engine(evaluate_function)
 
     #### MAE METRICS
 
@@ -250,6 +260,34 @@ if __name__ == '__main__':
         models_save_path
     )
 
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+        | ignite.engine.Events.COMPLETED,
+        # Callback
+        Evaluator.evaluate_dataloader,
+        # Parameters of callback
+        model,
+        model_device,
+        datas_device,
+        dataloader_train,
+        path_imgs_train
+    )
+
+
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+        | ignite.engine.Events.COMPLETED,
+        # Callback
+        Evaluator.evaluate_dataloader,
+        # Parameters of callback
+        model,
+        model_device,
+        datas_device,
+        dataloader_validation,
+        path_imgs_eval
+    )
+
+
     # # trainer.add_event_handler(
     # #     # ignite.engine.Events.COMPLETED,
     # #     ignite.engine.Events.COMPLETED,
@@ -288,19 +326,19 @@ if __name__ == '__main__':
     #     validation_history
     # )
     
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every) 
-        | ignite.engine.Events.COMPLETED,
-        # Callback
-        Evaluator.evaluate_dataloader_with_variable_size_image,
-        # Parameters of callback
-        evaluator,
-        model,
-        model_device,
-        datas_device,
-        dataloader_train,
-        path_imgs_train
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every) 
+    #     | ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_train,
+    #     path_imgs_train
+    # )
     
     # trainer.add_event_handler(
     #     ignite.engine.Events.COMPLETED,
@@ -315,19 +353,19 @@ if __name__ == '__main__':
     #     path_imgs_train
     # )
 
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
-        | ignite.engine.Events.COMPLETED,
-        # Callback
-        Evaluator.evaluate_dataloader_with_variable_size_image,
-        # Parameters of callback
-        evaluator,
-        model,
-        model_device,
-        datas_device,
-        dataloader_validation,
-        path_imgs_eval
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+    #     | ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_validation,
+    #     path_imgs_eval
+    # )
     
     # trainer.add_event_handler(
     #     ignite.engine.Events.COMPLETED,
