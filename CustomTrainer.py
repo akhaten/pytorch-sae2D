@@ -53,7 +53,6 @@ def create_train_step(
         model.train()
         optimizer.zero_grad()
         for i in range(0, size_of_batch):
-            print('Epoch: {}; Iter : [{}/{}]'.format(engine.state.epoch, i, size_of_batch))
             # to model device
             ## x : torch.Size([1, nb_channels, nb_rows, nb_cols])
             ## x_template : torch.Size([1, nb_classes, nb_rows, nb_cols])
@@ -123,13 +122,14 @@ def save_epoch_loss(engine: CustomEngine, path: pathlib.Path) -> None:
         arr = numpy.array(engine.epoch_loss_history)
     )
 
-def print_logs(engine: ignite.engine.Engine):
+def print_logs(engine: CustomEngine):
     strp = 'Epoch [{}/{}] : Loss {:.6f}'
+    epoch_loss = engine.epoch_loss_history[engine.state.epoch-1]
     print(
         strp.format(
             engine.state.epoch,
             engine.state.max_epochs,
-            engine.state.output['loss']
+            epoch_loss
         )
     )
 
