@@ -1,8 +1,5 @@
 import sys
-# For resolve path in sae
 sys.path.append('./sae')
-# For run in children folder
-# sys.path.append('..')
 
 #from Unfolding2D import \
 #    ModelV1 as Model, \
@@ -10,11 +7,10 @@ sys.path.append('./sae')
 #    Evaluator, \
 #    Datas
 
-import Trainer
+import CustomTrainer
 import Evaluator
-# import Model
+# import wrapper2D.defineme
 import Datas
-import wrapper2D.defineme
 
 import torch.optim
 import torch.nn
@@ -33,6 +29,9 @@ import numpy
 import yaml
 import sys
 
+import wrapper2D.models
+import wrapper2D.defineme
+
 torch.autograd.set_detect_anomaly(True)
 
 
@@ -47,8 +46,7 @@ def save_config(config: dict, path: pathlib.Path) -> None:
         
 if __name__ == '__main__':
     
-    print("READ CONFIG")
-    # Read config
+   # Read config
     train_folder = pathlib.Path(sys.argv[1])
     config = read_config(train_folder / 'config.yml')
     
@@ -105,7 +103,6 @@ if __name__ == '__main__':
     #################################################################
     
     # Make Dataset and Dataloaders
-    print("MAKE DATASET / DATALOADER")
     dataset_full = Datas.ImageDataset(
         dataset_path,
         datas_device
@@ -141,6 +138,7 @@ if __name__ == '__main__':
         latent_dim=config['model']['params']['latent_dim'],
         tau = config['model']['params']['tau']
     )
+    model = model.to(model_device)
 
     if clip_value_using:
         for p in model.parameters():
@@ -163,20 +161,38 @@ if __name__ == '__main__':
         k = config['train']['loss']['k']
     )
 
-    lr_scheduler = None
-
     # model.to(device=...)
 
-    model = model.to(model_device)
-    train_step = Trainer.create_train_step(
-        model, model_device, datas_device, optimizer, criterion, lr_scheduler
+    #model = model.to(model_device)
+    train_step = CustomTrainer.create_train_step(
+        model, model_device, datas_device, optimizer, criterion
     )
 
-    trainer = ignite.engine.Engine(train_step)
+    trainer = CustomTrainer.CustomEngine(train_step)
+    trainer.add_event_handler(
+        ignite.engine.Events.ITERATION_COMPLETED,
+        CustomTrainer.update_epoch_loss
+    )
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED,
+        CustomTrainer.compute_epoch_loss
+    )
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED,
+        CustomTrainer.save_epoch_loss,
+        loss_path
+    )
+    trainer.add_event_handler(
+        ignite.engine.Events.EPOCH_COMPLETED,
+        # Callback
+        CustomTrainer.clean_saeloss,
+        # Parameters of callback
+        criterion, 
+    )
 
 
     # Make evaluator
-    # evaluate_function = Evaluator.create_evaluate_function(model, model_device, datas_device)
+    # evaluate_function = Evaluator.create_evaluate_function_with_variable_size_image(model, model_device, datas_device)
     # evaluator = ignite.engine.Engine(evaluate_function)
 
     #### MAE METRICS
@@ -187,7 +203,7 @@ if __name__ == '__main__':
     # mae.attach(engine=evaluator, name='mae')
     # avg_mae.attach(engine=evaluator, name='avg_mae')
 
-    #### MSE METRICS
+    # #### MSE METRICS
 
     # mse = ignite.metrics.MeanSquaredError(output_transform)
     # avg_mse = ignite.metrics.RunningAverage(src=mse, epoch_bound=False)
@@ -195,7 +211,7 @@ if __name__ == '__main__':
     # mse.attach(engine=evaluator, name='mse')
     # avg_mse.attach(engine=evaluator, name='avg_mse')
     
-    #### History
+    # #### History
     
     # validation_history = {
     #     'mae' : [],
@@ -212,63 +228,83 @@ if __name__ == '__main__':
     # }
 
         
-    loss_history = []
+    # loss_history = []
     
-    #### Event handler
+    # #### Event handler
     
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED,
-        # Callback
-        Trainer.update_loss_history,
-        # Parameters of callback
-        loss_history
-    )
+    # # trainer.add_event_handler(
+    # #     ignite.engine.Events.EPOCH_COMPLETED,
+    # #     # Callback
+    # #     Trainer.update_loss_history,
+    # #     # Parameters of callback
+    # #     loss_history
+    # # )
 
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED,
-        # Callback
-        Trainer.save_loss_history,
-        # Parameters of callback
-        loss_history, 
-        loss_path
-    )
+    # # trainer.add_event_handler(
+    # #     ignite.engine.Events.EPOCH_COMPLETED,
+    # #     # Callback
+    # #     Trainer.save_loss_history,
+    # #     # Parameters of callback
+    # #     loss_history, 
+    # #     loss_path
+    # # )
     
     trainer.add_event_handler(
         # ignite.engine.Events.COMPLETED,
-        ignite.engine.Events.EPOCH_COMPLETED(every=models_save_every),
+        ignite.engine.Events.EPOCH_COMPLETED(every=models_save_every) 
+        | ignite.engine.Events.COMPLETED,
         # Callback
-        Trainer.save_model,
+        CustomTrainer.save_model,
         # Parameters of callback
         model,
         models_save_path
     )
 
     trainer.add_event_handler(
-        # ignite.engine.Events.COMPLETED,
-        ignite.engine.Events.COMPLETED,
+        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+        | ignite.engine.Events.COMPLETED,
         # Callback
-        Trainer.save_model,
+        Evaluator.evaluate_dataloader,
         # Parameters of callback
         model,
-        models_save_path
+        model_device,
+        datas_device,
+        dataloader_train,
+        path_imgs_train
     )
+
 
     trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED,
+        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+        | ignite.engine.Events.COMPLETED,
         # Callback
-        Trainer.clean_saeloss,
+        Evaluator.evaluate_dataloader,
         # Parameters of callback
-        criterion, 
+        model,
+        model_device,
+        datas_device,
+        dataloader_validation,
+        path_imgs_eval
     )
-    
 
-    #trainer.add_event_handler(
-    #    ignite.engine.Events.EPOCH_COMPLETED,
-    #    # Callback
-    #    Trainer.print_logs
-    #)
 
-    ## Evaluation on datas using for training
+    # # trainer.add_event_handler(
+    # #     # ignite.engine.Events.COMPLETED,
+    # #     ignite.engine.Events.COMPLETED,
+    # #     # Callback
+    # #     Trainer.save_model,
+    # #     # Parameters of callback
+    # #     model,
+    # #     models_save_path
+    # # )
+
+    # #trainer.add_event_handler(
+    # #    ignite.engine.Events.EPOCH_COMPLETED,
+    # #    # Callback
+    # #    Trainer.print_logs
+    # #)
+
+    # ## Evaluation on datas using for training
     # trainer.add_event_handler(
     #     ignite.engine.Events.EPOCH_COMPLETED,
     #     # Callback
@@ -279,7 +315,7 @@ if __name__ == '__main__':
     #     training_history
     # )
 
-    ## Evaluation on datas using for validation
+    # ## Evaluation on datas using for validation
     # trainer.add_event_handler(
     #     ignite.engine.Events.EPOCH_COMPLETED,
     #     # Callback
@@ -290,70 +326,77 @@ if __name__ == '__main__':
     #     validation_history
     # )
     
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every),
-        # Callback
-        Evaluator.evaluate_dataloader,
-        # Parameters of callback
-        model,
-        model_device,
-        datas_device,
-        dataloader_train,
-        path_imgs_train
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every) 
+    #     | ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_train,
+    #     path_imgs_train
+    # )
     
-    trainer.add_event_handler(
-        ignite.engine.Events.COMPLETED,
-        # Callback
-        Evaluator.evaluate_dataloader,
-        # Parameters of callback
-        model,
-        model_device,
-        datas_device,
-        dataloader_train,
-        path_imgs_train
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_train,
+    #     path_imgs_train
+    # )
 
-    trainer.add_event_handler(
-        ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every),
-        # Callback
-        Evaluator.evaluate_dataloader,
-        # Parameters of callback
-        model,
-        model_device,
-        datas_device,
-        dataloader_validation,
-        path_imgs_eval
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.EPOCH_COMPLETED(every=imgs_save_every)
+    #     | ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_validation,
+    #     path_imgs_eval
+    # )
     
-    trainer.add_event_handler(
-        ignite.engine.Events.COMPLETED,
-        # Callback
-        Evaluator.evaluate_dataloader,
-        # Parameters of callback
-        model,
-        model_device,
-        datas_device,
-        dataloader_validation,
-        path_imgs_eval
-    )
+    # trainer.add_event_handler(
+    #     ignite.engine.Events.COMPLETED,
+    #     # Callback
+    #     Evaluator.evaluate_dataloader_with_variable_size_image,
+    #     # Parameters of callback
+    #     evaluator,
+    #     model,
+    #     model_device,
+    #     datas_device,
+    #     dataloader_validation,
+    #     path_imgs_eval
+    # )
     
     
     # Run model
     
-    print("TRAINING...")
     _ = trainer.run(dataloader_train, max_epochs=nb_epochs)
     
     
-    # Save metrics
+    # # Save metrics
     
     # df_training = pandas.DataFrame(training_history)
     # df_validation = pandas.DataFrame(validation_history)
 
     # df_training.to_pickle(df_training_path)
     # df_validation.to_pickle(df_validation_path)
+    
+    
 
     
-    # Save loss
-    loss = numpy.array(loss_history)
-    numpy.save(loss_path, loss)
+
+
+    
